@@ -6,8 +6,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,8 +25,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             StudyAppTheme {
 //                DashboardScreen()
-//                 CreateTaskScreen()
-                 PomodoroScreen()
+//                CreateTaskScreen()
+                PomodoroScreen()
             }
         }
     }
@@ -32,11 +35,25 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun DashboardScreen() {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Welcome Lisa!", fontSize = 24.sp)
-        Text("XP: 150 / 200")
-        Spacer(modifier = Modifier.height(16.dp))
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .padding(16.dp)) {
 
+        Text("Welcome Lisa!", fontSize = 24.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text("Level 3 - XP: 150 / 200")
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // XP progress bar (150/200 = 0.75f)
+        LinearProgressIndicator(
+            progress = { 0.75f },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp),
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
         Text("Today's Tasks:")
         Text("- Finish Assignment")
         Text("- Review Lecture Notes")
@@ -45,18 +62,31 @@ fun DashboardScreen() {
 }
 
 
+
 @Composable
 fun CreateTaskScreen() {
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .padding(16.dp)) {
+
         Text("Add New Task", fontSize = 24.sp)
         Spacer(modifier = Modifier.height(8.dp))
+
         Text("Task Name: _______")
         Spacer(modifier = Modifier.height(8.dp))
+
         Text("Due Date: ________")
         Spacer(modifier = Modifier.height(16.dp))
-        Text("👉 [Add Task Button]")
+
+        Button(
+            onClick = { println("Task added!") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Add Task")
+        }
     }
 }
+
 
 @Composable
 fun PomodoroScreen() {
@@ -70,6 +100,11 @@ fun PomodoroScreen() {
         Spacer(modifier = Modifier.height(16.dp))
         Text("25:00", fontSize = 48.sp)
         Spacer(modifier = Modifier.height(24.dp))
-        Text("👉 [Start Button]")
+        Button(
+            onClick = { println("Timer Started") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Start Timer")
+        }
     }
 }
