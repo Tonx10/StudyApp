@@ -49,6 +49,15 @@ import com.example.studyapp.viewmodel.MainViewModelFactory
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import android.content.Context
+import android.media.MediaPlayer
+import android.os.VibrationEffect
+import android.os.Vibrator
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.example.studyapp.R
+
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels {
@@ -96,11 +105,14 @@ fun DashboardScreen(viewModel: MainViewModel, onNavigate: (String) -> Unit) {
         targetValue = xp / 200f,
         label = "XP Progress"
     )
-
     Column(modifier = Modifier
         .fillMaxSize()
         .padding(16.dp)) {
-
+        Image(
+            painter = painterResource(id = R.drawable.student_with_sword),
+            contentDescription = "Decorative image"
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         Text("Welcome Lisa!", fontSize = 24.sp)
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -226,7 +238,22 @@ fun CreateTaskScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             Text(if (taskDue.isEmpty()) "Select Due Date" else "Due: $taskDue")
         }
 
-        val taskTypes = listOf("Chore", "Homework", "Study for Test", "Group Project")
+        val taskTypes = listOf(
+            "Chore",
+            "Homework",
+            "Study for Test",
+            "Group Project",
+            "Reading",
+            "Exercise",
+            "Household",
+            "Planning",
+            "Creative Project",
+            "Personal Development",
+            "Errands",
+            "Finances",
+            "Health",
+            "Social"
+        )
 
         ExposedDropdownMenuBox(
             expanded = expanded,
@@ -266,14 +293,40 @@ fun CreateTaskScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         ) {
             Text("Add Task")
         }
+        Spacer(modifier = Modifier.height(8.dp))
+        Image(
+            painter = painterResource(id = R.drawable.quest_scroll),
+            contentDescription = "Decorative image"
+        )
     }
 }
 
 
 @Composable
 fun PomodoroScreen(viewModel: MainViewModel, onBack: () -> Unit) {
+    var inputMinutes by remember { mutableStateOf("25") }
+    var inputSeconds by remember { mutableStateOf("0") }
+    val context = LocalContext.current
     val time by viewModel.formatTime().collectAsState(initial = "25:00")
     val isRunning by viewModel.isRunning.collectAsState()
+    var showDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(time) {
+        if (time == "00:00") {
+            showDialog = true
+
+            val mediaPlayer = MediaPlayer.create(context, android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
+            mediaPlayer.start()
+
+            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(500)
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -283,11 +336,43 @@ fun PomodoroScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     ) {
         Text("Pomodoro Timer", fontSize = 24.sp)
         Spacer(modifier = Modifier.height(16.dp))
-        Text(time, fontSize = 48.sp)
+
+        Box(
+            modifier = Modifier.padding(bottom = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (!isRunning) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = inputMinutes,
+                        onValueChange = { inputMinutes = it.filter { c -> c.isDigit() } },
+                        label = { Text("Minutes") },
+                        singleLine = true,
+                        modifier = Modifier.width(100.dp)
+                    )
+                    OutlinedTextField(
+                        value = inputSeconds,
+                        onValueChange = { inputSeconds = it.filter { c -> c.isDigit() } },
+                        label = { Text("Seconds") },
+                        singleLine = true,
+                        modifier = Modifier.width(100.dp)
+                    )
+                }
+            } else {
+                Text(time, fontSize = 48.sp)
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = { viewModel.startTimer() },
+            onClick = {
+                val totalSeconds = inputMinutes.toIntOrNull()?.times(60)?.plus(inputSeconds.toIntOrNull() ?: 0) ?: 1500
+                viewModel.startTimer(totalSeconds)
+            },
             enabled = !isRunning,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -297,7 +382,11 @@ fun PomodoroScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(modifier = Modifier.height(8.dp))
 
         Button(
-            onClick = { viewModel.resetTimer() },
+            onClick = {
+                viewModel.resetTimer()
+                inputMinutes = "25"
+                inputSeconds = "0"
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Reset")
@@ -307,5 +396,28 @@ fun PomodoroScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
             Text("Back")
         }
+        Spacer(modifier = Modifier.height(8.dp))
+        Image(
+            painter = painterResource(id = R.drawable.study_clock),
+            contentDescription = "Decorative image"
+        )
+    }
+
+    if (showDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Time's Up!") },
+            text = { Text("Good job! Take a break or start another session.") },
+            confirmButton = {
+                Button(onClick = {
+                    showDialog = false
+                    viewModel.resetTimer()
+                    inputMinutes = "25"
+                    inputSeconds = "0"
+                }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }

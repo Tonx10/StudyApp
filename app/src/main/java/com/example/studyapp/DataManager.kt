@@ -10,17 +10,14 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 
-// DataStore keys
 val Context.dataStore by preferencesDataStore(name = "user_prefs")
 
-// Preferences Keys object
 object PreferencesKeys {
     val XP = intPreferencesKey("xp")
     val LEVEL = intPreferencesKey("level")
     val TASKS = stringPreferencesKey("tasks")
 }
 
-// A serializable data class to save to DataStore
 @Serializable
 data class SerializableTask(
     val name: String,

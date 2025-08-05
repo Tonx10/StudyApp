@@ -1,10 +1,8 @@
 package com.example.studyapp
 
 import android.content.Context
-import android.system.Os.remove
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.studyapp.datastore.DataStoreHelper
 import kotlinx.coroutines.delay
@@ -34,7 +32,17 @@ class MainViewModel(private val context: Context) : ViewModel() {
         "Chore" to 10,
         "Homework" to 20,
         "Study for Test" to 35,
-        "Group Project" to 50
+        "Group Project" to 50,
+        "Reading" to 30,
+        "Exercise" to 15,
+        "Household" to 15,
+        "Planning" to 10,
+        "Creative Project" to 45,
+        "Personal Development" to 30,
+        "Errands" to 10,
+        "Finances" to 25,
+        "Health" to 20,
+        "Social" to 5
     )
 
     private val _timeLeft = MutableStateFlow(25 * 60)
@@ -42,7 +50,7 @@ class MainViewModel(private val context: Context) : ViewModel() {
 
     private val _isRunning = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
-
+    private var initialTimerDuration = 25 * 60
     private var timerJob: Job? = null
 
     init {
@@ -77,7 +85,7 @@ class MainViewModel(private val context: Context) : ViewModel() {
     private fun gainXp(amount: Int) {
         val newXp = xp.value + amount
         if (newXp >= 200) {
-            level.value = level.value + 1
+            level.value += 1
             xp.value = newXp - 200
         } else {
             xp.value = newXp
@@ -85,10 +93,13 @@ class MainViewModel(private val context: Context) : ViewModel() {
         saveData()
     }
 
-    fun startTimer() {
+    fun startTimer(totalSeconds: Int) {
         if (_isRunning.value) return
 
+        initialTimerDuration = totalSeconds
+        _timeLeft.value = totalSeconds
         _isRunning.value = true
+
         timerJob = viewModelScope.launch {
             while (_timeLeft.value > 0) {
                 delay(1000L)
@@ -98,11 +109,13 @@ class MainViewModel(private val context: Context) : ViewModel() {
         }
     }
 
+
     fun resetTimer() {
         timerJob?.cancel()
-        _timeLeft.value = 25 * 60
+        _timeLeft.value = initialTimerDuration
         _isRunning.value = false
     }
+
 
     fun formatTime(): Flow<String> {
         return timeLeft.map { timeInSeconds ->
