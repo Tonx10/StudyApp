@@ -1,51 +1,89 @@
 package com.example.studyapp
 
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
+import android.content.Context
+import android.system.Os.remove
+import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.studyapp.datastore.DataStoreHelper
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.State
 import kotlinx.coroutines.Job
 
-class MainViewModel : ViewModel() {
-    val taskName = mutableStateOf("")
-    val taskDue = mutableStateOf("")
-    val xp = mutableStateOf(150)
-    val level = mutableStateOf(3)
-    val taskList = mutableStateListOf(
-        "Finish Assignment",
-        "Review Lecture Notes",
-        "Group Project Meeting"
+class MainViewModel(private val context: Context) : ViewModel() {
+
+    data class Task(
+        val name: String,
+        val dueDate: String,
+        val type: String,
+        val xpReward: Int
+    )
+    val xp = MutableStateFlow(0)
+    val level = MutableStateFlow(1)
+
+    private val _taskList = MutableStateFlow<List<Task>>(emptyList())
+    val taskList: StateFlow<List<Task>> = _taskList.asStateFlow()
+
+    var taskName = mutableStateOf("")
+    var taskDue = mutableStateOf("")
+    var selectedTaskType = mutableStateOf("Homework")
+
+    val taskTypeXp = mapOf(
+        "Chore" to 10,
+        "Homework" to 20,
+        "Study for Test" to 35,
+        "Group Project" to 50
     )
 
-    fun addTask() {
-        val name = taskName.value.trim()
-        val due = taskDue.value.trim()
-        if (name.isNotEmpty()) {
-            val item = if (due.isNotEmpty()) "$name (Due: $due)" else name
-            taskList.add(item)
+    private val _timeLeft = MutableStateFlow(25 * 60)
+    val timeLeft: StateFlow<Int> = _timeLeft.asStateFlow()
 
-            // Simple XP logic
-            xp.value += 10
-            if (xp.value >= 200) {
-                xp.value -= 200
-                level.value += 1
-            }
+    private val _isRunning = MutableStateFlow(false)
+    val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
-            taskName.value = ""
-            taskDue.value = ""
+    private var timerJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            DataStoreHelper.readXp(context).collect { newXp -> xp.value = newXp }
+        }
+        viewModelScope.launch {
+            DataStoreHelper.readLevel(context).collect { newLevel -> level.value = newLevel }
         }
     }
 
-    private val _timeLeft = mutableStateOf(25 * 60) // 25 mins
-    val timeLeft: State<Int> = _timeLeft
+    fun addTask(name: String, due: String, type: String) {
+        val xpValue = taskTypeXp[type] ?: 10
+        if (name.isNotBlank() && due.isNotBlank()) {
+            val newTask = Task(name, due, type, xpValue)
+            val updatedTasks = _taskList.value.toMutableList().apply { add(newTask) }
+            _taskList.value = updatedTasks
+            saveData()
+            taskName.value = ""
+            taskDue.value = ""
+            selectedTaskType.value = "Homework"
+        }
+    }
 
-    private val _isRunning = mutableStateOf(false)
-    val isRunning: State<Boolean> = _isRunning
+    fun finishTask(task: Task) {
+        val updatedTasks = _taskList.value.toMutableList().apply { remove(task) }
+        _taskList.value = updatedTasks
+        gainXp(task.xpReward)
+        saveData()
+    }
 
-    private var timerJob: Job? = null
+    private fun gainXp(amount: Int) {
+        val newXp = xp.value + amount
+        if (newXp >= 200) {
+            level.value = level.value + 1
+            xp.value = newXp - 200
+        } else {
+            xp.value = newXp
+        }
+        saveData()
+    }
 
     fun startTimer() {
         if (_isRunning.value) return
@@ -66,9 +104,25 @@ class MainViewModel : ViewModel() {
         _isRunning.value = false
     }
 
-    fun formatTime(): String {
-        val minutes = _timeLeft.value / 60
-        val seconds = _timeLeft.value % 60
-        return String.format("%02d:%02d", minutes, seconds)
+    fun formatTime(): Flow<String> {
+        return timeLeft.map { timeInSeconds ->
+            val minutes = timeInSeconds / 60
+            val seconds = timeInSeconds % 60
+            String.format("%02d:%02d", minutes, seconds)
+        }
+    }
+
+    fun loadData() {
+        viewModelScope.launch {
+            _taskList.value = DataStoreHelper.readTasks(context)
+        }
+    }
+
+    private fun saveData() {
+        viewModelScope.launch {
+            DataStoreHelper.saveXp(context, xp.value)
+            DataStoreHelper.saveLevel(context, level.value)
+            DataStoreHelper.saveTasks(context, _taskList.value)
+        }
     }
 }
